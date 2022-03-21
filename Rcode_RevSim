@@ -1,0 +1,95 @@
+# Revenue Simulation ----------------------------------------------
+#Residential Plan
+
+x_sq_ft_per <- 0.65 #0-25sq ft, %
+y_sq_ft_per <- 1-x_sq_ft_per #from above, 26+ %
+
+#function for random selection of wall size
+sq_ft_wall_func <- function(){
+  sq_ft_walls <- 0
+  if(runif(1,0,1)<=x_sq_ft_per){
+    sq_ft_walls='0-25'
+  } else {
+    sq_ft_walls='26+'
+  }
+  return(sq_ft_walls)
+}        
+
+#Walls Per Customer
+walls_vector_num <- c(1:6) #vector, num walls 1-6
+walls_vector_pr <- c(0.65,0.25,0.05,0.025,0.025,0) #vector, prob. %, align to 1-6 walls
+sum(walls_vector_pr) #check, 100%
+
+num_walls_func <- function(){
+  num_walls <- sample(walls_vector_num,size=1, replace=TRUE, prob=walls_vector_pr)
+  return(num_walls)
+}
+
+#Rotations per Customer
+rotations_vector_num <- c(0:4) #vector, annual rotations 0-4
+rotations_vector_pr <- c(0.20, 0.25,0.40,0.10,0.05) #vector, prob. %, align to number of rotations
+sum(rotations_vector_pr) #check, 100%
+
+num_rotations_func <- function(){
+  num_rotations <- sample(rotations_vector_num,size=1, replace=TRUE, prob=rotations_vector_pr)
+  return(num_rotations)
+}
+
+#Monthly Revenue Lookup, Based on Wall Size
+monthly_fee_25 <- 50
+rotation_fee_25 <- 75
+monthly_fee_26 <- 75
+rotation_fee_26 <- 95
+
+monthly_rev_func <- function(sq_ft_walls,num_walls){
+  mo_rev <- 0 
+  if (sq_ft_walls=='0-25'){
+    mo_rev <- num_walls*monthly_fee_25
+  } else {
+    mo_rev <- num_walls*monthly_fee_26
+  }
+  return(mo_rev)
+}
+
+#monthly_rev_func(sq_ft_wall_func(), num_walls_func()) for testing, within loop, pass the parameters
+
+#Rotation Fees, Based on Wall Size/num of rotations
+Rotation_fees_func <- function(sq_ft_walls,num_walls,num_rotations){
+  Rotation_fees <- 0 
+  if (sq_ft_walls=='0-25'){
+    Rotation_fees <- num_walls*rotation_fee_25*num_rotations
+  } else {
+    Rotation_fees <- num_walls*rotation_fee_26*num_rotations
+  }
+  return(Rotation_fees)
+}
+
+results <- NULL 
+
+for (i in 1:5000){
+  customer = i
+  num_walls = num_walls_func()
+  sq_ft_walls = sq_ft_wall_func()
+  num_rotations = num_rotations_func()
+  Rotation_fees = Rotation_fees_func(sq_ft_walls,num_walls,num_rotations)
+  mo_rev = monthly_rev_func(sq_ft_walls,num_walls)
+  annual_rev = (mo_rev*12)+Rotation_fees
+  results = rbind(results, data.frame(customer,num_walls,sq_ft_walls,num_rotations,Rotation_fees,mo_rev,annual_rev))
+}
+
+head(results)
+min(results$annual_rev)
+max(results$annual_rev)
+avg_rev <- mean(results$annual_rev)
+median(results$annual_rev)
+
+h <- hist(results$annual_rev, xlim=c(0,max(results$annual_rev)), breaks=seq(from=min(results$annual_rev),to=max(results$annual_rev),length.out = 20), freq = TRUE,
+          xlab="Annual Revenue", main="Distribution of Annual Income", col="blue", include.lowest = TRUE)
+abline(v=avg_rev, col="purple", lwd=2)
+
+options(scipen = 999)
+
+#creating DS of histogram values
+hist_bins <- as.data.frame(seq(from=min(results$annual_rev),to=max(results$annual_rev),by=250))
+freq_ct <- as.data.frame(table(cut(results$annual_rev,breaks=seq(from=min(results$annual_rev),to=max(results$annual_rev),by=250))))
+format(freq_ct,scientific=FALSE)
